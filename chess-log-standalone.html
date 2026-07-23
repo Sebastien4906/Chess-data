@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Chess Log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%231c1a17%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 text-anchor=%22middle%22>♟</text></svg>">
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #1c1a17;
+    --surface: #262219;
+    --surface-2: #322c20;
+    --border: #4a3f2e;
+    --ink: #ede6d6;
+    --ink-dim: #a89c85;
+    --accent: #8ba077;
+    --accent-dim: #46503e;
+    --warn: #c1666b;
+    --warn-dim: #4a2e2f;
+    --gold: #c9a227;
+  }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 24px 16px 80px;
+  }
+  h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; }
+  .mono { font-family: 'SFMono-Regular', Consolas, monospace; }
+
+  .header {
+    max-width: 760px; margin: 0 auto 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .title-wrap { display: flex; align-items: center; gap: 14px; }
+  .board {
+    width: 34px; height: 34px; display: grid;
+    grid-template-columns: repeat(4,1fr); grid-template-rows: repeat(4,1fr);
+    border-radius: 6px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .sq-a { background: var(--ink); }
+  .sq-b { background: var(--accent); }
+  .title { font-size: 26px; font-weight: 600; margin: 0; }
+  .subtitle { color: var(--ink-dim); font-size: 13px; margin: 2px 0 0; }
+  .add-btn {
+    display: flex; align-items: center; gap: 6px; background: var(--accent); color: #16180f;
+    border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .add-btn:hover { filter: brightness(1.08); }
+
+  .container { max-width: 760px; margin: 0 auto; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
+  .card h2, .card h3 { margin: 0 0 14px; font-weight: 600; }
+
+  .form-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .close-btn { background: none; border: none; color: var(--ink-dim); cursor: pointer; font-size: 20px; line-height: 1; }
+
+  .row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .field { flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: 6px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-dim); }
+  input, select, textarea {
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--ink);
+    border-radius: 8px; padding: 9px 10px; font-size: 14px; font-family: inherit; width: 100%;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--gold); }
+
+  .pill-group { display: flex; gap: 8px; }
+  .pill {
+    flex: 1; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--ink-dim); font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .pill.active-win { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .pill.active-loss { background: var(--warn-dim); border-color: var(--warn); color: var(--warn); }
+  .pill.active-draw { background: #3a331c; border-color: var(--gold); color: var(--gold); }
+  .pill.active-color { background: var(--surface-2); border-color: var(--ink); color: var(--ink); }
+
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  input[type="range"] { accent-color: var(--accent); padding: 0; }
+
+  .submit-btn {
+    width: 100%; background: var(--accent); color: #16180f; border: none; border-radius: 8px;
+    padding: 12px; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 6px;
+  }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
+  @media (max-width: 560px) { .stats-grid { grid-template-columns: repeat(2,1fr); } }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .stat-value { font-size: 24px; font-weight: 700; line-height: 1; font-family: Georgia, serif; }
+  .stat-label { font-size: 11px; color: var(--ink-dim); margin-top: 4px; }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; }
+  .bar-label { width: 110px; flex-shrink: 0; color: var(--ink-dim); }
+  .bar-track { flex: 1; background: var(--surface-2); border-radius: 6px; height: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--warn); border-radius: 6px; }
+  .bar-count { width: 24px; text-align: right; color: var(--ink-dim); }
+
+  .trend-strip { display: flex; gap: 4px; align-items: flex-end; height: 60px; }
+  .trend-bar { flex: 1; border-radius: 3px 3px 0 0; min-width: 6px; }
+
+  .opening-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .opening-row:last-child { border-bottom: none; }
+  .opening-name { font-weight: 700; }
+  .opening-record { color: var(--ink-dim); font-size: 12px; }
+
+  .history-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .history-item:last-child { border-bottom: none; }
+  .history-left { flex: 1; cursor: pointer; }
+  .history-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
+  .tag-win { background: var(--accent-dim); color: var(--accent); }
+  .tag-loss { background: var(--warn-dim); color: var(--warn); }
+  .tag-draw { background: #3a331c; color: var(--gold); }
+  .history-meta { font-size: 12px; color: var(--ink-dim); }
+  .history-note { font-size: 13px; color: var(--ink-dim); margin-top: 4px; }
+  .del-btn { background: none; border: none; color: var(--ink-dim); cursor: pointer; padding: 6px; font-size: 16px; }
+  .del-btn:hover { color: var(--warn); }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--ink-dim); }
+  .empty-title { font-size: 18px; color: var(--ink); margin-bottom: 6px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title-wrap">
+    <div class="board">
+      <div class="sq-b"></div><div class="sq-a"></div><div class="sq-b"></div><div class="sq-a"></div>
+      <div class="sq-a"></div><div class="sq-b"></div><div class="sq-a"></div><div class="sq-b"></div>
+      <div class="sq-b"></div><div class="sq-a"></div><div class="sq-b"></div><div class="sq-a"></div>
+      <div class="sq-a"></div><div class="sq-b"></div><div class="sq-a"></div><div class="sq-b"></div>
+    </div>
+    <div>
+      <h1 class="title">Chess Log</h1>
+      <p class="subtitle mono" id="gameCount">0 games logged</p>
+    </div>
+  </div>
+  <button class="add-btn" id="toggleFormBtn">+ Log game</button>
+</div>
+
+<div class="container">
+
+  <form class="card hidden" id="gameForm">
+    <div class="form-head">
+      <h2 id="formTitle">New game</h2>
+      <button type="button" class="close-btn" id="closeFormBtn">&times;</button>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <span class="label">Result</span>
+        <div class="pill-group" id="resultPills">
+          <button type="button" class="pill" data-value="win">Win</button>
+          <button type="button" class="pill" data-value="loss">Loss</button>
+          <button type="button" class="pill" data-value="draw">Draw</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="label">Playing as</span>
+        <div class="pill-group" id="colorPills">
+          <button type="button" class="pill" data-value="white">White</button>
+          <button type="button" class="pill" data-value="black">Black</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <span class="label">Date</span>
+        <input type="date" id="fDate">
+      </div>
+      <div class="field">
+        <span class="label">Opening</span>
+        <input type="text" id="fOpening" placeholder="e.g. Italian Game">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <span class="label">Mistake move #</span>
+        <input type="number" min="1" id="fMoveNumber" placeholder="optional">
+      </div>
+      <div class="field">
+        <span class="label">Mistake type</span>
+        <select id="fMistakeTag">
+          <option>None</option>
+          <option>Blunder</option>
+          <option>Missed tactic</option>
+          <option>Time trouble</option>
+          <option>Opening prep</option>
+          <option>Endgame technique</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field" style="flex-basis:100%">
+        <span class="label">Notes</span>
+        <textarea id="fNote" placeholder="What happened? What would you do differently?"></textarea>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:4px">
+      <div class="field" style="flex-basis:100%">
+        <span class="label">How well did you play? (<span id="ratingVal">5</span>/10)</span>
+        <div class="slider-row">
+          <input type="range" min="1" max="10" value="5" id="fRating" style="flex:1">
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Add game</button>
+  </form>
+
+  <div class="empty hidden" id="emptyState">
+    <div class="empty-title">No games logged yet</div>
+    <p>Log your next game and patterns will start showing up here.</p>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="statWinRate">0%</div><div class="stat-label">win rate</div></div>
+      <div class="stat-card"><div class="stat-value" id="statTotal">0</div><div class="stat-label">games logged</div></div>
+      <div class="stat-card"><div class="stat-value" id="statStreak">0</div><div class="stat-label">win streak</div></div>
+      <div class="stat-card"><div class="stat-value" id="statTopMistake" style="font-size:15px">—</div><div class="stat-label">top mistake</div></div>
+    </div>
+
+    <div class="card" id="trendCard">
+      <h3>Recent form</h3>
+      <div class="trend-strip" id="trendStrip"></div>
+    </div>
+
+    <div class="card hidden" id="mistakeCard">
+      <h3>Mistake breakdown</h3>
+      <div id="mistakeBars"></div>
+    </div>
+
+    <div class="card hidden" id="openingCard">
+      <h3>Openings</h3>
+      <div id="openingRows"></div>
+    </div>
+
+    <div class="card">
+      <h3>History</h3>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const STORAGE_KEY = "chess-log-games";
+let games = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+let editingId = null;
+let formState = { result: "win", color: "white" };
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(games)); }
+
+const formEl = document.getElementById("gameForm");
+const toggleFormBtn = document.getElementById("toggleFormBtn");
+const closeFormBtn = document.getElementById("closeFormBtn");
+
+toggleFormBtn.onclick = () => {
+  if (!formEl.classList.contains("hidden")) { formEl.classList.add("hidden"); return; }
+  resetForm();
+  formEl.classList.remove("hidden");
+  window.scrollTo({top:0, behavior:"smooth"});
+};
+closeFormBtn.onclick = () => formEl.classList.add("hidden");
+
+document.querySelectorAll("#resultPills .pill").forEach(btn => {
+  btn.onclick = () => { formState.result = btn.dataset.value; renderPills(); };
+});
+document.querySelectorAll("#colorPills .pill").forEach(btn => {
+  btn.onclick = () => { formState.color = btn.dataset.value; renderPills(); };
+});
+function renderPills() {
+  document.querySelectorAll("#resultPills .pill").forEach(b => {
+    b.classList.toggle("active-" + b.dataset.value, b.dataset.value === formState.result);
+  });
+  document.querySelectorAll("#colorPills .pill").forEach(b => {
+    b.classList.toggle("active-color", b.dataset.value === formState.color);
+  });
+}
+
+const ratingSlider = document.getElementById("fRating");
+ratingSlider.oninput = () => document.getElementById("ratingVal").textContent = ratingSlider.value;
+
+function resetForm() {
+  editingId = null;
+  formState = { result: "win", color: "white" };
+  document.getElementById("formTitle").textContent = "New game";
+  document.getElementById("submitBtn").textContent = "Add game";
+  document.getElementById("fDate").value = new Date().toISOString().slice(0,10);
+  document.getElementById("fOpening").value = "";
+  document.getElementById("fMoveNumber").value = "";
+  document.getElementById("fMistakeTag").value = "None";
+  document.getElementById("fNote").value = "";
+  ratingSlider.value = 5;
+  document.getElementById("ratingVal").textContent = "5";
+  renderPills();
+}
+
+function startEdit(g) {
+  editingId = g.id;
+  formState = { result: g.result, color: g.color };
+  document.getElementById("formTitle").textContent = "Edit game";
+  document.getElementById("submitBtn").textContent = "Save changes";
+  document.getElementById("fDate").value = g.date;
+  document.getElementById("fOpening").value = g.opening || "";
+  document.getElementById("fMoveNumber").value = g.moveNumber ?? "";
+  document.getElementById("fMistakeTag").value = g.mistakeTag || "None";
+  document.getElementById("fNote").value = g.note || "";
+  ratingSlider.value = g.selfRating || 5;
+  document.getElementById("ratingVal").textContent = g.selfRating || 5;
+  renderPills();
+  formEl.classList.remove("hidden");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+formEl.onsubmit = (e) => {
+  e.preventDefault();
+  const entry = {
+    id: editingId || uid(),
+    date: document.getElementById("fDate").value,
+    result: formState.result,
+    color: formState.color,
+    opening: document.getElementById("fOpening").value.trim(),
+    moveNumber: document.getElementById("fMoveNumber").value === "" ? null : Number(document.getElementById("fMoveNumber").value),
+    mistakeTag: document.getElementById("fMistakeTag").value,
+    note: document.getElementById("fNote").value.trim(),
+    selfRating: Number(ratingSlider.value),
+  };
+  if (editingId) {
+    games = games.map(g => g.id === editingId ? entry : g);
+  } else {
+    games = [entry, ...games];
+  }
+  save();
+  formEl.classList.add("hidden");
+  render();
+};
+
+function deleteGame(id) {
+  games = games.filter(g => g.id !== id);
+  save();
+  render();
+}
+
+function render() {
+  document.getElementById("gameCount").textContent = games.length + (games.length === 1 ? " game logged" : " games logged");
+
+  if (games.length === 0) {
+    document.getElementById("emptyState").classList.remove("hidden");
+    document.getElementById("dashboard").classList.add("hidden");
+    return;
+  }
+  document.getElementById("emptyState").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+
+  const total = games.length;
+  const wins = games.filter(g => g.result === "win").length;
+  const winRate = Math.round((wins/total)*100);
+  let streak = 0;
+  for (const g of games) { if (g.result === "win") streak++; else break; }
+
+  const tagCounts = {};
+  games.forEach(g => { if (g.mistakeTag && g.mistakeTag !== "None") tagCounts[g.mistakeTag] = (tagCounts[g.mistakeTag]||0)+1; });
+  const tagData = Object.entries(tagCounts).map(([tag,count]) => ({tag,count})).sort((a,b)=>b.count-a.count);
+
+  document.getElementById("statWinRate").textContent = winRate + "%";
+  document.getElementById("statTotal").textContent = total;
+  document.getElementById("statStreak").textContent = streak;
+  document.getElementById("statTopMistake").textContent = tagData[0] ? tagData[0].tag : "—";
+
+  // trend strip
+  const trend = games.slice(0,15).reverse();
+  const trendStrip = document.getElementById("trendStrip");
+  trendStrip.innerHTML = "";
+  trend.forEach(g => {
+    const bar = document.createElement("div");
+    bar.className = "trend-bar";
+    const h = g.result === "win" ? 100 : g.result === "draw" ? 55 : 15;
+    bar.style.height = h + "%";
+    bar.style.background = g.result === "win" ? "var(--accent)" : g.result === "draw" ? "var(--gold)" : "var(--warn)";
+    bar.title = g.result + " · " + g.date;
+    trendStrip.appendChild(bar);
+  });
+
+  // mistake bars
+  const mistakeCard = document.getElementById("mistakeCard");
+  const mistakeBars = document.getElementById("mistakeBars");
+  if (tagData.length > 0) {
+    mistakeCard.classList.remove("hidden");
+    const max = tagData[0].count;
+    mistakeBars.innerHTML = tagData.map(t => `
+      <div class="bar-row">
+        <div class="bar-label">${t.tag}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(t.count/max)*100}%"></div></div>
+        <div class="bar-count">${t.count}</div>
+      </div>
+    `).join("");
+  } else {
+    mistakeCard.classList.add("hidden");
+  }
+
+  // openings
+  const openingCounts = {};
+  games.forEach(g => {
+    if (!g.opening) return;
+    if (!openingCounts[g.opening]) openingCounts[g.opening] = {wins:0,losses:0,draws:0};
+    openingCounts[g.opening][g.result === "win" ? "wins" : g.result === "loss" ? "losses" : "draws"]++;
+  });
+  const openingRows = Object.entries(openingCounts).map(([opening,r]) => ({opening,...r,total:r.wins+r.losses+r.draws})).sort((a,b)=>b.total-a.total).slice(0,6);
+  const openingCard = document.getElementById("openingCard");
+  if (openingRows.length > 0) {
+    openingCard.classList.remove("hidden");
+    document.getElementById("openingRows").innerHTML = openingRows.map(o => `
+      <div class="opening-row">
+        <span class="opening-name">${escapeHtml(o.opening)}</span>
+        <span class="opening-record mono">${o.wins}W / ${o.losses}L / ${o.draws}D</span>
+      </div>
+    `).join("");
+  } else {
+    openingCard.classList.add("hidden");
+  }
+
+  // history
+  document.getElementById("historyList").innerHTML = games.map(g => `
+    <div class="history-item">
+      <div class="history-left" onclick='editById("${g.id}")'>
+        <div class="history-top">
+          <span class="tag tag-${g.result}">${g.result}</span>
+          <span class="history-meta mono">${g.date} · ${g.color}</span>
+        </div>
+        <div class="opening-name">${escapeHtml(g.opening) || "Unnamed opening"}</div>
+        ${g.mistakeTag && g.mistakeTag !== "None" ? `<div class="history-meta">${g.mistakeTag}${g.moveNumber ? " · move " + g.moveNumber : ""}</div>` : ""}
+        ${g.note ? `<div class="history-note">${escapeHtml(g.note)}</div>` : ""}
+      </div>
+      <button class="del-btn" onclick='deleteGame("${g.id}")'>&#10005;</button>
+    </div>
+  `).join("");
+}
+
+function editById(id) {
+  const g = games.find(x => x.id === id);
+  if (g) startEdit(g);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
+}
+
+render();
+</script>
+</body>
+</html>
